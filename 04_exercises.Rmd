@@ -109,7 +109,8 @@ ggmap(world) +
              aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
              alpha = .3, 
              size = .1) +
-  theme_map()
+  theme_map() + 
+  theme(legend.background = element_blank())
 ```
   2. Construct a new map of Starbucks locations in the Twin Cities metro area (approximately the 5 county metro area).  
 
@@ -124,7 +125,8 @@ ggmap(twincities) +
              aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
              size = .5) +
   annotate("point", x = 10, y = 10, color = "red", size = 1) +
-  theme_map()
+  theme_map() + 
+  theme(legend.background = element_blank())
 ```
  
   3. In the Twin Cities plot, play with the zoom number. What does it do?  (just describe what it does - don't actually include more than one map).  
@@ -143,7 +145,8 @@ ggmap(twincities) +
   geom_point(data = Starbucks, 
              aes(x = Longitude, y = Latitude, color = `Ownership Type`), 
              size = .5) +
-  theme_map()
+  theme_map() + 
+  theme(legend.background = element_blank())
 ```
 
   5. Add a point to the map that indicates Macalester College and label it appropriately. There are many ways you can do think, but I think it's easiest with the `annotate()` function (see `ggplot2` cheatsheet).
@@ -164,7 +167,8 @@ ggmap(twincities) +
              size = .5) +
   geom_point(data = Points, 
              aes(x = lon, y = lat), color = "blue", size = 2) +
-  theme_map()
+  theme_map() + 
+  theme(legend.background = element_blank())
 ```
 
 ### Choropleth maps with Starbucks data (`geom_map()`)
@@ -225,7 +229,8 @@ starbucks_with_2018_pop_est %>%
        fill = "Starbucks Per 10000 People", 
        subtitle = "By Kristin Bryan") +
   expand_limits(x = states_map$long, y = states_map$lat) + 
-  theme_map()
+  theme_map() + 
+  theme(legend.background = element_blank())
 ```
 
 **Observation:** It's interesting to infer how big different state's populations are based on the contrast between how many Starbucks there are in the state vs how many there are per 10,000 people. For example, it looks like there are many Starbucks on the East Coast, but the amount of Starbucks per 10,000 people is very low. This could mean that the population density in states on the East Coast is very high. 
@@ -259,7 +264,7 @@ Here is the code to read in the data. We do this a little differently than usual
 
 ```{r cache=TRUE}
 data_site <- 
-  "https://www.macalester.edu/~dshuman1/data/112/2014-Q4-Trips-History-Data.rds" 
+  "https://www.macalester.edu/~dshuman1/data/112/2014-Q4-Trips-History-Data-Small.rds" 
 Trips <- readRDS(gzcon(url(data_site)))
 Stations<-read_csv("http://www.macalester.edu/~dshuman1/data/112/DC-Stations.csv")
 ```
@@ -267,7 +272,44 @@ Stations<-read_csv("http://www.macalester.edu/~dshuman1/data/112/DC-Stations.csv
   9. Use the latitude and longitude variables in `Stations` to make a visualization of the total number of departures from each station in the `Trips` data. Use either color or size to show the variation in number of departures. This time, plot the points on top of a map. Use any of the mapping tools you'd like.
   
 ```{r}
+departure_by_station <- Trips %>% 
+  left_join(Stations, by = c("sstation" = "name")) %>% 
+  group_by(lat, long) %>% 
+  summarise(n = n(),
+            prop_casual = mean(client == "Casual"))
 
+dc_map <- get_stamenmap(
+  bbox = c(left = -77.3376, bottom = 38.7241, right = -76.6921, top = 39.0634),
+  maptype = "terrain",
+  zoom = 11
+)
+
+ggmap(dc_map) + 
+  geom_point(data = departure_by_station,
+             aes(x = long,
+                 y = lat,
+                 color = n),
+             alpha = .8, 
+             shape = 18) + 
+  scale_color_viridis_c() + 
+  theme_map() + 
+  theme(legend.background = element_blank())
+```
+
+```{r}
+departure_by_station <- Trips %>% 
+  left_join(Stations, by = c("sstation" = "name")) %>% 
+  group_by(lat, long) %>% 
+  summarise(n = n(),
+            prop_casual = mean(client == "Casual"))
+
+pal <- colorNumeric("viridis",
+                    domain = departure_by_station$n)
+
+leaflet(data = departure_by_station) %>% 
+  addTiles() %>% 
+  addCircles(color = ~pal(n),
+             opacity = .8)
 ```
   
   10. Only 14.4% of the trips in our data are carried out by casual users. Create a plot that shows which area(s) have stations with a much higher percentage of departures by casual users. What patterns do you notice? Also plot this on top of a map. I think it will be more clear what the patterns are.
